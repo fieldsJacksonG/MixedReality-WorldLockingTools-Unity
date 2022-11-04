@@ -196,6 +196,54 @@ namespace Microsoft.MixedReality.WorldLocking.Core
             headTracker.Reset();
         }
 
+        private void RemoveRedundantEdges(List<AnchorEdge> edges)
+        {
+            // Don't really need to check length, if it's empty or single edge nothing will happen.
+            if (edges.Count > 1)
+            {
+                // First reorganize edges so smaller index is first in every pair.
+                // This is important, since edge 0,1 is the same as edge 1,0
+                for (int i = 0; i < edges.Count; i++)
+                {
+                    if (edges[i].anchorId1 > edges[i].anchorId2)
+                    {
+                        edges[i] = new AnchorEdge() { anchorId1 = edges[i].anchorId2, anchorId2 = edges[i].anchorId1 };
+                    }
+                }
+
+                edges.Sort((e0, e1) =>
+                {
+                // Sort by first index first.
+                if (e0.anchorId1 < e1.anchorId1)
+                    {
+                        return -1;
+                    }
+                    if (e0.anchorId1 > e1.anchorId1)
+                    {
+                        return 1;
+                    }
+                // First index equal, sort by second index.
+                if (e0.anchorId2 < e1.anchorId2)
+                    {
+                        return -1;
+                    }
+                    if (e0.anchorId2 > e1.anchorId2)
+                    {
+                        return 1;
+                    }
+                    return 0;
+                });
+                // Note i doesn't reach zero, because edges[i] is compared to edges[i-1].
+                for (int i = edges.Count - 1; i > 0; --i)
+                {
+                    if (edges[i - 1].anchorId1 == edges[i].anchorId1 && edges[i - 1].anchorId2 == edges[i].anchorId2)
+                    {
+                        edges.RemoveAt(i);
+                    }
+                }
+            }
+        }
+
         /// <summary>
         /// If we have more local anchors than parameterized limit, destroy the furthest.
         /// </summary>
@@ -328,6 +376,8 @@ namespace Microsoft.MixedReality.WorldLocking.Core
                     }
                 }
             }
+
+            RemoveRedundantEdges(newEdges);
 
             CheckForCull(maxDistAnchorId, maxDistSpongyAnchor);
 
